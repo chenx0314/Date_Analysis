@@ -1,0 +1,90 @@
+## Time Series Analysis by R- ARIMA Forecast Model
+
+path =  "daily-min-temperatures.csv"      # Enter the path of the dataset here
+temp = read.csv(path)
+temp<-temp$Temp
+temp_ts <- ts(temp,frequency = 365,start= c(1981,01,01))
+plot.ts(temp_ts)
+temp_ts <- SMA(temp_ts,n=15)
+plot.ts(temp_ts_SMA)
+
+# 2. use R to display decompose the seasonal time series
+temp_ts_comp <- decompose(temp_ts)
+plot(temp_ts_comp)
+
+# 3. Seasonally adjust to subtract the seasonal components from the time series. 
+temp_ts_adjusted <- temp_ts - temp_ts_comp$seasonal
+plot(temp_ts_adjusted)
+
+
+
+#### Part B
+install.packages("forecast")
+library("forecast")
+install.packages("TTR")
+library("TTR")
+
+
+#### Generate the Time series data
+
+air<-airquality$Temp.  
+air_ts <- ts(air,frequency = 365,start= c(1973))
+plot.ts(air_ts)
+
+install.packages("fUnitRoots")
+library("fUnitRoots")
+
+
+
+air_ts_diff1 <- diff(air_ts, differences=1)
+plot.ts(air_ts_diff1)
+
+acf(air_ts_diff1,lag.max=20)                  # plot a correlogram
+acf(air_ts_diff1, lag.max=20,, plot=FALSE)   # get the autocorrelation values
+
+pacf(air_ts_diff1, lag.max=20)             # plot a partial correlogram
+pacf(air_ts_diff1, lag.max=20, plot=FALSE) # get the partial autocorrelation values
+
+auto.arima(air)
+
+air_ts_arima <- arima(air_ts, order = c(0,1,2))
+air_ts_arima
+
+air_ts_forecast <- forecast(air_ts_arima,h=30)
+air_ts_forecast
+plot(air_ts_forecast)
+
+# check
+acf(air_ts_forecast$residuals, lag.max=20)
+Box.test(air_ts_forecast$residuals, lag=20, type="Ljung-Box")
+
+#Function to check whether forecast errors are normally distributed
+plotForecastErrors <- function(forecasterrors)
+{
+  # make a histogram of the forecast errors:
+  mybinsize <- IQR(forecasterrors,na.rm=TRUE)/4
+  mysd   <- sd(forecasterrors,na.rm=TRUE)
+  mymin  <- min(forecasterrors,na.rm=TRUE) - mysd*5
+  mymax  <- max(forecasterrors,na.rm=TRUE) + mysd*3
+  # generate normally distributed data with mean 0 and standard deviation mysd
+  mynorm <- rnorm(10000, mean=0, sd=mysd)
+  mymin2 <- min(mynorm)
+  mymax2 <- max(mynorm)
+  if (mymin2 < mymin) { mymin <- mymin2 }
+  if (mymax2 > mymax) { mymax <- mymax2 }
+  # make a red histogram of the forecast errors, with the normally distributed data overlaid:
+  mybins <- seq(mymin, mymax, mybinsize)
+  hist(forecasterrors, col="red", freq=FALSE, breaks=mybins)
+  # freq=FALSE ensures the area under the histogram = 1
+  # generate normally distributed data with mean 0 and standard deviation mysd
+  myhist <- hist(mynorm, plot=FALSE, breaks=mybins)
+  # plot the normal curve as a blue line on top of the histogram of forecast errors:
+  points(myhist$mids, myhist$density, type="l", col="blue", lwd=2)
+}
+
+
+plot.ts(air_ts_forecast$residuals)            # make time plot of forecast errors
+plotForecastErrors(air_ts_forecast$residuals) # make a histogram
+
+mean(air_ts_forecast$residuals)
+
